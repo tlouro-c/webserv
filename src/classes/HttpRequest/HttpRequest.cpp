@@ -213,7 +213,7 @@ RequestStatus	HttpRequest::performReadOperations(const std::vector<ServerBlock>&
 		m_responseBody = basicHtml("Success Deleting File", "<h2>Success Deleting File</h2>");
 		return (http::OK);
 	}
-	if (endsWith(m_cgiFileExtension, m_filePath)) {
+	if (!m_cgiFileExtension.empty() && endsWith(m_cgiFileExtension, m_filePath)) {
 		return (http::CGI);
 	}
 	if (isDirectory(m_filePath)) {
@@ -526,7 +526,6 @@ void	HttpRequest::childProccess(int inputPipe[2], int outputPipe[2]) {
 	
 	StrVector	argvVector;
 
-	argvVector.push_back("/usr/bin/python3");
 	argvVector.push_back(m_URL.substr(1));
 
 	char** argv = vectorToCharPtrArr(argvVector);

@@ -1,8 +1,9 @@
+#! /usr/bin/env python3
+
 import cgi
 import sys
 
 def main():
-
 
 	form = cgi.FieldStorage()
 
