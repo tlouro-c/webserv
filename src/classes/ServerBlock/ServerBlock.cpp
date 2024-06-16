@@ -7,6 +7,7 @@ ServerBlock::ServerBlock() : m_port(80), m_maxBodySize(1024), m_hostname("0.0.0.
 		m_errorPages["501"] = "./Website/error_pages/501.html";
 		m_errorPages["413"] = "./Website/error_pages/413.html";
 		m_errorPages["403"] = "./Website/error_pages/403.html";
+		m_errorPages["405"] = "./Website/error_pages/405.html";
 		m_errorPages["204"] = "./Website/error_pages/204.html";
 	}
 

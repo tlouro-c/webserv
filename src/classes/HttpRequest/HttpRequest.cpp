@@ -20,8 +20,8 @@ HttpRequest::HttpRequest(const FileDescriptor& targetSocketFileDescriptor) :
 	m_requestConnection(""),
 	m_contentLength("0"), 
 	m_response(""),
-	m_statusCode(""),
-	m_maxBodySize(1024),
+	m_statusCode("200"),
+	m_maxBodySize(1000000),
 	m_requestStatus(REQUEST_NOT_READ),
 	m_parseState(FIRST_LINE),
 	m_cgiStatus(CGI_NOT_RUNNING),
@@ -30,7 +30,9 @@ HttpRequest::HttpRequest(const FileDescriptor& targetSocketFileDescriptor) :
 	m_CgiOutputFd(-1),
 	m_cgiPid(-1),
 	m_keepAlive(true),
-	m_isChunked(false)
+	m_isChunked(false),
+	m_currentRequestBodySize(0),
+	m_cgiInputFile(NULL)
 	{
 		gettimeofday(&m_startTimeRequest, NULL);
 	}
@@ -69,7 +71,7 @@ static std::vector<byte>::iterator find_crlf(std::vector<byte>::iterator begin, 
  * @return If everything goes well returns true and in case of an error returns false
  * 
 */
-RequestStatus	HttpRequest::readRequest() {
+RequestStatus	HttpRequest::readRequest(const std::vector<ServerBlock>& serverBlocks) {
 
 	gettimeofday(&m_startTimeRequest, NULL);
 
@@ -110,9 +112,14 @@ RequestStatus	HttpRequest::readRequest() {
 			} else if (startsWith("Transfer-Encoding:", lineStr)) {
 				m_isChunked = (strip(lineStr.substr(lineStr.find(":") + 2)) == "chunked");
 			} else if (lineStr == "\n" || lineStr == "\r\n") {
+				assignSettings(serverBlocks);
+				m_filePath = m_settings.getRoot() + m_URL;
 				m_parseState = BODY;
 			}
 		} else {
+			if (!m_cgiFileExtension.empty() && endsWith(m_cgiFileExtension, m_filePath) && m_requestMethod == "POST" && m_cgiInputFile == NULL) {
+				m_cgiInputFile = std::tmpfile();
+			}
 			if (m_isChunked) {
 				do {
 					ByteStreamIt sizeEnd = find_crlf(line->begin(), line->end());
@@ -135,6 +142,10 @@ RequestStatus	HttpRequest::readRequest() {
 					std::vector<byte>::iterator chunkEnd = std_next(chunkStart, nextChunkSize);
 					std::vector<byte> chunk(chunkStart, chunkEnd);
 
+					m_currentRequestBodySize += chunk.size();
+					if (!m_cgiFileExtension.empty() && endsWith(m_cgiFileExtension, m_filePath) && m_requestMethod == "POST") {
+						std::fwrite(&chunk[0], sizeof(byte), chunk.size(), m_cgiInputFile);
+					}
 					m_requestBody.insert(m_requestBody.end(), chunk.begin(), chunk.end());
 
 					if (std::distance(chunkEnd, line->end()) > 2) {
@@ -144,10 +155,23 @@ RequestStatus	HttpRequest::readRequest() {
 							m_parseState = FIRST_LINE;
 						}
 						delete (line);
+						if (m_currentRequestBodySize > m_maxBodySize) {
+							buildErrorPage(http::CONTENT_TOO_LARGE_413);
+							return (ERROR);
+						}
 						return (REQUEST_NOT_READ);
 					}
 				} while (nextChunkSize != 0);
 			} else {
+				m_currentRequestBodySize += line->size();
+				if (m_currentRequestBodySize > m_maxBodySize) {
+					delete (line);
+					buildErrorPage(http::CONTENT_TOO_LARGE_413);
+					return (ERROR);
+				}
+				if (!m_cgiFileExtension.empty() && endsWith(m_cgiFileExtension, m_filePath) && m_requestMethod == "POST") {
+					std::fwrite(&(*line)[0], sizeof(byte), line->size(), m_cgiInputFile);
+				}
 				m_requestBody.insert(m_requestBody.end(), line->begin(), line->end());
 			}
 		}
@@ -174,17 +198,18 @@ RequestStatus	HttpRequest::performReadOperations(const std::vector<ServerBlock>&
 		return (m_requestStatus);
 	}
 
-	switch (readRequest()) {
+	switch (readRequest(serverBlocks)) {
 
 		case CLOSE:
 			return (CLOSE);
 		case REQUEST_READ:
 			m_requestStatus = REQUEST_READ;
 			break;
+		case ERROR:
+			return (ERROR);
 		default:
 			return (REQUEST_NOT_READ);
 	}
-	assignSettings(serverBlocks);
 	if (unknownMethod()) {
 		buildErrorPage(http::NOT_IMPLEMENTED_501);
 		return (ERROR);
@@ -192,17 +217,13 @@ RequestStatus	HttpRequest::performReadOperations(const std::vector<ServerBlock>&
 	StrVector allowedMethods = m_settings.getAllowedMethods();
 	if (std::find(allowedMethods.begin(), allowedMethods.end(),
 		m_requestMethod) == allowedMethods.end()) {
-			buildErrorPage(http::FORBIDDEN_403);
+			buildErrorPage(http::METHOD_NOT_ALLOWED_405);
 			return (ERROR);
-		} else if (std::atoi(m_contentLength.c_str()) > m_maxBodySize) {
-			buildErrorPage(http::CONTENT_TOO_LARGE_413);
-			return (ERROR);
-		}
+	}
 	if (m_settings.getRedirection().first != "" && m_settings.getRedirection().second != "") {
 		m_statusCode = m_settings.getRedirection().first;
 		m_URL = m_settings.getRedirection().second;
 	}
-	m_filePath = m_settings.getRoot() + m_URL;
 
 	if (m_requestMethod == "DELETE") {
 		if (std::remove(m_filePath.c_str()) != 0) {
@@ -469,32 +490,22 @@ bool		HttpRequest::performDirectoryListing() {
 CGIStatus	HttpRequest::performCgi() {
 
 	if (m_cgiStatus == CGI_NOT_RUNNING) {
-		int		inputPipe[2], outputPipe[2];
+		int		outputPipe[2];
 
-		if (pipe(outputPipe) == -1
-			|| (m_requestMethod == "POST" && pipe(inputPipe) == -1)) {
+		if (pipe(outputPipe) == -1) {
 			throw CgiError();
 		}
 		m_CgiOutputFd = outputPipe[0];
-		fcntl(outputPipe[0], F_SETFL, FD_CLOEXEC);
+		fcntl(outputPipe[0], F_SETFL, O_NONBLOCK);
 		fcntl(outputPipe[1], F_SETFL, FD_CLOEXEC);
-
-		if (m_requestMethod == "POST") {
-			fcntl(inputPipe[0], F_SETFL, FD_CLOEXEC);
-			fcntl(inputPipe[1], F_SETFL, FD_CLOEXEC);
-			write(inputPipe[1], m_requestBody.data(), m_requestBody.size());
-			close(inputPipe[1]);
-		}
 
 		m_cgiPid = fork();
 		if (m_cgiPid == -1) {
 			throw CgiError();
 		} else if (m_cgiPid == 0) {
-			childProccess(inputPipe, outputPipe);
+			childProccess(outputPipe);
 		}
 		close(outputPipe[1]);
-		if (m_requestMethod == "POST")
-			close(inputPipe[0]);
 		m_cgiStatus = CGI_RUNNING;
 	} else if (m_cgiStatus == CGI_DONE) {
 		char buffer[BUFFER_SIZE] = {0};
@@ -512,17 +523,22 @@ CGIStatus	HttpRequest::performCgi() {
 }
 
 
-void	HttpRequest::childProccess(int inputPipe[2], int outputPipe[2]) {
-
+void	HttpRequest::childProccess(int outputPipe[2]) {
+	
+	int inputFileFd = -1;
 	close(outputPipe[0]);
+	if (m_requestMethod == "POST") {
+		std::rewind(m_cgiInputFile);
+		inputFileFd = fileno(m_cgiInputFile);
+	}
 	if (dup2(outputPipe[1], STDOUT_FILENO) == -1 || (m_requestMethod == "POST"
-			&& dup2(inputPipe[0], STDIN_FILENO) == -1)) {
+			&& dup2(inputFileFd, STDIN_FILENO) == -1)) {
 				std::exit(1);
 			}
-	close(outputPipe[1]);
 	if (m_requestMethod == "POST") {
-		close(inputPipe[0]);
+		close(inputFileFd);
 	}
+	close(outputPipe[1]);
 	
 	StrVector	argvVector;
 
@@ -625,6 +641,10 @@ CGIStatus	HttpRequest::monitorCgiRunTime() {
 		kill(m_cgiPid, SIGKILL);
 	}
 	if (waitpid(m_cgiPid, &status, WNOHANG) > 0) {
+		if (m_requestMethod == "POST" && m_cgiInputFile != NULL) {
+			fclose(m_cgiInputFile);
+			m_cgiInputFile = NULL;
+		}
 		if (WIFEXITED(status) && WEXITSTATUS(status) == EXIT_SUCCESS) {
 			m_cgiStatus = CGI_DONE;
 		} else {
@@ -658,6 +678,10 @@ void HttpRequest::reset() {
 	m_cgiFileExtension = ".py";
 	m_CgiOutputFd = -1;
 	m_cgiPid = -1;
+	m_keepAlive = true;
+	m_isChunked = false;
+	m_currentRequestBodySize = 0;
+	m_cgiInputFile = NULL;
 	gettimeofday(&m_startTimeRequest, NULL);
 }
 
@@ -697,6 +721,14 @@ pid_t HttpRequest::getCgiPid() {
 
 void	HttpRequest::setCgiOutputFd(int fd) {
 	m_CgiOutputFd = fd;
+}
+
+std::FILE*	HttpRequest::getCgiInputFile() {
+	return (m_cgiInputFile);
+}
+
+void	HttpRequest::setCgiInputFile(std::FILE* file) {
+	m_cgiInputFile = file;
 }
 
 //* Exceptions

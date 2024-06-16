@@ -5,7 +5,9 @@ import os
 import sys
 
 def main():
+
 	form = cgi.FieldStorage()
+
 	upload_directory = os.environ['UPLOAD_DIR']
 	domain = "http://" + os.environ['DOMAIN']
 	if 'filename' in form:

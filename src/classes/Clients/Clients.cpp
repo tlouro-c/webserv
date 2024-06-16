@@ -55,6 +55,16 @@ void	Clients::removeClosedConnections(EventPoll& eventManager) {
 			std::cout << "\n" << ANSI_COLOR_RED << " ◉ " << ANSI_COLOR_RESET << it->second->getHostname() << ":" << it->second->getPort() << std::endl;
 			int fd = it->first;
 			eventManager.remove(fd);
+			if (it->second->getCgiPid() != -1) {
+				kill(it->second->getCgiPid(), SIGKILL);
+			}
+			if (it->second->getCgiOutputFd() != -1) {
+				eventManager.remove(it->second->getCgiOutputFd());
+			}
+			if (it->second->getCgiInputFile() != NULL) {
+				fclose(it->second->getCgiInputFile());
+				it->second->setCgiInputFile(NULL);
+			}
 			delete it->second;
 			m_socketToRequestMap.erase(it);
 		} else if (it->second->getCgiStatus() == http::CGI_RUNNING) {

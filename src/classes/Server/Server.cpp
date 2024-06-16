@@ -126,8 +126,8 @@ void	Server::setupListeningSockets() {
 			try {
 				ServerSocket	newSocket((*current).getHostname(), (*current).getPort());
 				if (newSocket.isOpen()) {
-                	std::cout << "Listening on " << std::setw(20) << std::left 
-					<< (*current).getHostname() << ":" << (*current).getPort()
+                	std::cout << "Listening on " << std::left 
+					<< (*current).getHostname() + ":" << (*current).getPort()
 					<< ANSI_COLOR_GREEN << "  [SUCCESS]" << ANSI_COLOR_RESET << std::endl;
 					m_listeningSockets.push_back(newSocket);
 				} else {
@@ -314,7 +314,7 @@ void	Server::assignServerBlockSetting(const std::string& line, ServerBlock& serv
 		valueStream >> tmp;
 		if (valueStream.fail())
 			throw BadConfig();
-		serverBlock.setMaxBodySize(std::atoi(tmp.c_str()));
+		serverBlock.setMaxBodySize(std::atoi(tmp.c_str()) * 1000000);
 	}
 	else {
 		std::cout << ANSI_COLOR_RED << "[" << line_number << "] " << line << ANSI_COLOR_RESET << std::endl;

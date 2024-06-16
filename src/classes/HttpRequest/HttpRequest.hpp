@@ -13,6 +13,7 @@ namespace http {
 	const char OK_200[] = "200";
 	const char REDIRECT_302[] = "302";
 	const char NOT_FOUND_404[] = "404";
+	const char METHOD_NOT_ALLOWED_405[] = "405";
 	const char NO_CONTENT_204[] = "204";
 	const char NOT_IMPLEMENTED_501[] = "501";
 	const char CONTENT_TOO_LARGE_413[] = "413";
@@ -47,7 +48,7 @@ namespace http {
 	public:
 								HttpRequest(const FileDescriptor& targetSocketFileDescriptor);
 								~HttpRequest();
-		RequestStatus			readRequest();
+		RequestStatus			readRequest(const std::vector<ServerBlock>& serverBlocks);
 		RequestStatus			performReadOperations(const std::vector<ServerBlock>& serverBlocks);
 		void					sendResponse();
 		void					assignSettings(const std::vector<ServerBlock>& serverBlocks);
@@ -69,6 +70,8 @@ namespace http {
 		bool					getKeepAlive();
 		std::string				getHostname();
 		int						getPort();
+		std::FILE*				getCgiInputFile();
+		void					setCgiInputFile(std::FILE* file);
 
 	private:
 		std::string							m_hostname;
@@ -101,6 +104,8 @@ namespace http {
 		int									m_requestId;
 		bool								m_keepAlive;
 		bool								m_isChunked;
+		int									m_currentRequestBodySize;
+		std::FILE*							m_cgiInputFile;
 
 		
 		//* Private methods
@@ -109,7 +114,7 @@ namespace http {
 		std::string		expandContentType();
 		std::string		expandContentLength();
 		bool			performDirectoryListing();
-		void			childProccess(int inputPipe[2], int outputPipe[2]);
+		void			childProccess(int outputPipe[2]);
 		char**			createEnvironment();
 		bool			unknownMethod();
 

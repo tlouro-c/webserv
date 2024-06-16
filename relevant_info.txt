@@ -1,0 +1,9 @@
+No, the browser will not automatically split a large file into multiple requests. When you upload a file through a
+ browser using a form, the browser sends the entire file as part of a single HTTP request, regardless of the file 
+ size. This single request includes the entire file content in one go within a multipart/form-data request.
+
+
+If you want to handle large file uploads by splitting them into smaller chunks and sending them as multiple requests,
+ you need to implement client-side logic to do this manually. This can be achieved using JavaScript, typically with 
+ the help of the File and Blob APIs, along with XMLHttpRequest or the Fetch API.
+ 
