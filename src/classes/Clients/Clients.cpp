@@ -52,7 +52,7 @@ void	Clients::removeClosedConnections(EventPoll& eventManager) {
 			(now.tv_usec - it->second->getStartTimeRequest().tv_usec);
 		next = std_next(it);
 		if (it->second->getRequestStatus() == http::CLOSE || elapsed > 15000000) {
-			std::cout << "\n" << ANSI_COLOR_RED << " ◉ " << ANSI_COLOR_RESET << it->second->getHostname() << ":" << it->second->getPort() << std::endl;
+			std::cout << ANSI_COLOR_RED << " ◉ " << ANSI_COLOR_RESET << it->second->getHostname() << ":" << it->second->getPort() << "\n" << std::endl;
 			int fd = it->first;
 			eventManager.remove(fd);
 			if (it->second->getCgiPid() != -1) {

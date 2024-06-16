@@ -542,7 +542,6 @@ void	HttpRequest::childProccess(int outputPipe[2]) {
 
 	chdir(m_settings.getRoot().c_str());
 	execve(argv[0], argv, env);
-	std::cerr << strerror(errno) << std::endl;
 	int status = errno;
 	cleanCharPtrArr(argv);
 	cleanCharPtrArr(env);
@@ -597,12 +596,12 @@ void	HttpRequest::sendResponse() {
 						"Content-Length: " + expandContentLength() + "\r\n"
 						"\r\n" + m_responseBody;
 	}
-	if (write(m_targetSocketFileDescriptor, m_response.c_str(), m_response.length()) <= 0) {
+	if (write(m_targetSocketFileDescriptor, m_response.c_str(), m_response.length()) <= 0 || m_statusCode == "413" || m_statusCode == "500") {
 		m_requestConnection = "close";
 	}
 	std::cout << (std::atoi(m_statusCode.c_str()) >= 400 ? ANSI_COLOR_RED : ANSI_COLOR_BLUE) 
-		<< "  [" << m_hostname << ":" << m_port << "] " << m_statusCode << " "
-		<< m_requestMethod << " " << m_domain + m_URL << " " << m_version << ANSI_COLOR_RESET << std::endl;
+		<< " ⇒" << " [" << m_hostname << ":" << m_port << "] " << m_statusCode << " "
+		<< m_requestMethod << " " << m_domain + m_URL << " " << m_version << ANSI_COLOR_RESET << "\n" << std::endl;
 	if (StrToLower(m_requestConnection) == "close") {
 		m_keepAlive = false;
 		m_requestStatus = CLOSE;
@@ -644,7 +643,6 @@ CGIStatus	HttpRequest::monitorCgiRunTime() {
 		if (WIFEXITED(status) && WEXITSTATUS(status) == EXIT_SUCCESS) {
 			m_cgiStatus = CGI_DONE;
 		} else {
-			std::cout << WEXITSTATUS(status) << std::endl;
 			if (WEXITSTATUS(status) == EACCES) {
 				buildErrorPage(http::FORBIDDEN_403);
 			} else if (WEXITSTATUS(status) == ENOENT) {

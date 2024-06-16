@@ -135,7 +135,7 @@ void	Server::setupListeningSockets() {
 				}
 			}
 			catch (const std::exception& exception) {
-            	std::cerr << "Listening on " << std::setw(20) << std::left 
+            	std::cerr << "Listening on " << std::left 
 					<< (*current).getHostname() << ":" << (*current).getPort()
 					<< ANSI_COLOR_RED << "  [FAILURE: " << exception.what() << "]" << ANSI_COLOR_RESET << std::endl;
 			}
