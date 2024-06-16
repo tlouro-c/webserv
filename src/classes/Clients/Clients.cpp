@@ -72,7 +72,6 @@ void	Clients::removeClosedConnections(EventPoll& eventManager) {
 				delFromPipeMap(it->second->getCgiOutputFd());
 				eventManager.remove(it->second->getCgiOutputFd());
 				it->second->setCgiOutputFd(-1);
-				it->second->buildErrorPage(http::INTERNAL_ERROR_500);
 				it->second->setRequestStatus(http::ERROR);
 				eventManager.mod(it->first, WRITE_OPERATIONS);
 			}

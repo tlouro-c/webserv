@@ -245,6 +245,7 @@ void	Server::loadConfig(const char* filename) {
 			}
 			m_serverBlocks.push_back(newServerBlock);
 		} else if (line.empty() || line[0] == '#') {
+			line.clear();
 			continue; 
 		} else {
 			std::cout << ANSI_COLOR_RED << "[" << line_number << "] " << line << ANSI_COLOR_RESET << std::endl;

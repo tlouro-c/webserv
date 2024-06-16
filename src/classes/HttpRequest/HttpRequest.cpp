@@ -644,6 +644,14 @@ CGIStatus	HttpRequest::monitorCgiRunTime() {
 		if (WIFEXITED(status) && WEXITSTATUS(status) == EXIT_SUCCESS) {
 			m_cgiStatus = CGI_DONE;
 		} else {
+			std::cout << WEXITSTATUS(status) << std::endl;
+			if (WEXITSTATUS(status) == EACCES) {
+				buildErrorPage(http::FORBIDDEN_403);
+			} else if (WEXITSTATUS(status) == ENOENT) {
+				buildErrorPage(http::NOT_FOUND_404);
+			} else {
+				buildErrorPage(http::INTERNAL_ERROR_500);
+			}
 			m_cgiStatus = CGI_ERROR;
 		}
 		m_cgiPid = -1;
