@@ -35,7 +35,7 @@ This will create the executable named `webserver`.
 Run the server by executing:
 
 ```bash
-./webserver
+./webserver <configuration file>
 ```
 
 Once running, the server will listen on a predefined port and serve requests. You can visit `http://localhost:PORT/` in your web browser where `PORT` is the port number on which the server is listening.
