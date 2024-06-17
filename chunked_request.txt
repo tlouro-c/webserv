@@ -1,0 +1,27 @@
+POST /cgi-bin/print_body.cgi HTTP/1.1
+Host: localhost:8020
+Content-Type: text/plain
+Transfer-Encoding: chunked
+
+7
+Welcome
+6
+ to th
+8
+e world.
+5
+ This
+3
+ is
+7
+ a test
+A
+ of chunked
+9
+ transfer
+E
+ encoding in
+A
+ HTTP/1.1.
+0
+
