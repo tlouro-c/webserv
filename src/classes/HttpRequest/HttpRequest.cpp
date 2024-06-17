@@ -26,7 +26,7 @@ HttpRequest::HttpRequest(const FileDescriptor& targetSocketFileDescriptor) :
 	m_parseState(FIRST_LINE),
 	m_cgiStatus(CGI_NOT_RUNNING),
 	m_targetSocketFileDescriptor(targetSocketFileDescriptor),
-	m_cgiFileExtension(".py"),
+	m_cgiFileExtension(""),
 	m_CgiOutputFd(-1),
 	m_cgiPid(-1),
 	m_keepAlive(true),
@@ -672,12 +672,12 @@ void HttpRequest::reset() {
 	m_contentLength = "0";
 	m_response = "";
 	m_statusCode = http::OK_200;
-	m_maxBodySize = 1024;
+	m_maxBodySize = 1000000;
 	m_requestStatus = REQUEST_NOT_READ;
 	m_parseState = FIRST_LINE;
 	m_cgiStatus = CGI_NOT_RUNNING;
 	m_requestBody.clear();
-	m_cgiFileExtension = ".py";
+	m_cgiFileExtension = "";
 	m_CgiOutputFd = -1;
 	m_cgiPid = -1;
 	m_keepAlive = true;

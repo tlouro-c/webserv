@@ -106,7 +106,6 @@ namespace http {
 		bool								m_isChunked;
 		int									m_currentRequestBodySize;
 		std::FILE*							m_cgiInputFile;
-
 		
 		//* Private methods
 						HttpRequest();

@@ -1,4 +1,4 @@
-POST /cgi-bin/print_body.py HTTP/1.1
+POST /cgi-bin/print_body.cgi HTTP/1.1
 Host: localhost:8020
 Content-Type: text/plain
 Transfer-Encoding: chunked
@@ -11,9 +11,8 @@ Welcome
 e world.
 5
  This
-2
+3
  is
- 
 7
  a test
 A
