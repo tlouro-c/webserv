@@ -18,6 +18,7 @@ int main(int argc, char**argv) {
 	sigemptyset(&act.sa_mask);
 	act.sa_flags = 0;
 	sigaction(SIGINT, &act, NULL);
+	sigaction(SIGQUIT, &act, NULL);
 
 	try {
 		server.loadConfig(argv[1]);
